@@ -137,85 +137,77 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 .fc:focus{border-color:var(--accent2);}
 .req{color:var(--danger);}
 
-/* STAGES HORIZONTAL TIMELINE */
+/* STAGES VERTICAL LAYOUT */
 .stages-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stages-sidebar {
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
+  height: 380px;
+  overflow-y: auto;
 }
-.stages-stepper {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 2px 8px;
-  border-bottom: 1px solid var(--border);
-  scrollbar-width: thin;
-}
-.step-item {
+.stage-nav-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 20px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
   cursor: pointer;
-  background: var(--surface2);
-  border: 1px solid var(--border);
   transition: all 0.15s ease;
-  flex: 0 0 auto;
+  color: var(--muted);
+  border: 1px solid transparent;
 }
-.step-item:hover {
-  border-color: var(--accent2);
+.stage-nav-item:hover {
   background: rgba(14, 165, 233, 0.04);
+  color: var(--text);
 }
-.step-item.active {
-  border-color: var(--accent);
-  background: rgba(16, 185, 129, 0.06);
+.stage-nav-item.active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-.step-circle {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+.stage-nav-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Syne', sans-serif;
   font-size: 10px;
-  font-weight: 800;
-  background: rgba(100, 116, 139, 0.1);
-  color: var(--muted);
+  font-weight: 700;
   flex-shrink: 0;
-  transition: all 0.15s ease;
 }
-.step-item.active .step-circle {
-  background: var(--accent) !important;
-  color: var(--bg) !important;
-}
-.step-item.done .step-circle {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--accent);
-}
-.step-details {
+.stage-nav-info {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
+  flex: 1;
 }
-.step-name {
-  font-size: 11px;
+.stage-nav-name {
+  font-size: 12px;
   font-weight: 600;
-  color: var(--text);
+  color: inherit;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.step-meta {
+.stage-nav-meta {
   font-size: 9px;
   color: var(--muted);
   font-family: 'JetBrains Mono', monospace;
-  background: rgba(0,0,0,0.03);
-  padding: 1px 4px;
-  border-radius: 3px;
-}
-[data-theme="midnight"] .step-meta {
-  background: rgba(255,255,255,0.03);
 }
 .stage-content {
   background: var(--surface);
@@ -1234,7 +1226,7 @@ function openDetail(id, tab){
   const postBadge=document.getElementById('mtab-post-badge');
   if(postBadge){
     const hasDef=shouldShowDeficiency(p);
-    postBadge.textContent=hasDef?'RFD 1–9 &#9888;':'RFD 1–9';
+    postBadge.textContent=hasDef?'RFD 1–9 ⚠️':'RFD 1–9';
     postBadge.style.color=hasDef?'var(--warn)':'';
     postBadge.style.background=hasDef?'rgba(245,158,11,.15)':'';
   }
@@ -1252,20 +1244,20 @@ function buildStages(p){
 
 function buildStageSidebar(p){
   const container=document.getElementById('d-stages');
-  const stepper=STAGES.map(s=>{
+  const sidebar=STAGES.map(s=>{
     const sp=getStageProgress(p,s);
     const isActive=s.id===activeStageId;
     const done=sp.done===s.items.length;
-    return `<div class="step-item ${isActive?'active':''} ${done?'done':''}" onclick="selectStage(${s.id})" id="sni_${s.id}">
-      <div class="step-circle" style="background:${s.color}20;color:${s.color}">${s.id}</div>
-      <div class="step-details">
-        <div class="step-name" title="${s.name}">${s.name}</div>
-        <div class="step-meta">${sp.done}/${s.items.length} done</div>
+    return `<div class="stage-nav-item ${isActive?'active':''} ${done?'done':''}" onclick="selectStage(${s.id})" id="sni_${s.id}">
+      <div class="stage-nav-num" style="background:${s.color}15;color:${s.color}">${s.id}</div>
+      <div class="stage-nav-info">
+        <div class="stage-nav-name" title="${s.name}">${s.name}</div>
+        <div class="stage-nav-meta">${sp.done}/${s.items.length} done</div>
       </div>
     </div>`;
   }).join('');
   container.innerHTML=`<div class="stages-layout">
-    <div class="stages-stepper">${stepper}</div>
+    <div class="stages-sidebar">${sidebar}</div>
     <div class="stage-content" id="stage-content-panel"></div>
   </div>`;
 }
@@ -1273,8 +1265,8 @@ function buildStageSidebar(p){
 function selectStage(sid){
   const p=DB.projects.find(x=>x.id===currentProjId); if(!p) return;
   activeStageId=sid;
-  // update stepper active state
-  document.querySelectorAll('.step-item').forEach(el=>{
+  // update sidebar active state
+  document.querySelectorAll('.stage-nav-item').forEach(el=>{
     const id=parseInt(el.id.replace('sni_',''));
     el.classList.toggle('active',id===sid);
   });
@@ -1286,8 +1278,6 @@ function renderStageContent(p, sid){
   const s=STAGES.find(x=>x.id===sid); if(!s) return;
   const sp=getStageProgress(p,s);
   const sd=p.sdpData&&p.sdpData['s'+s.id]||{};
-  const tagMap={doc:'t-doc',sys:'t-sys',ver:'t-ver',act:'t-act'};
-  const tagLabel={doc:'&#128196; Doc',sys:'&#128421; System',ver:'&#10004; Verify',act:'&#9889; Action'};
 
   const rows=s.items.map((i,idx)=>{
     const curVal=(p.checks&&p.checks[i.id])||'';
@@ -1305,14 +1295,11 @@ function renderStageContent(p, sid){
       if(i.inputs.arn){ const a=(p.itemData&&p.itemData[i.id+'_arn'])||''; inputs+=`<input type="text" class="ck-input w-md mono" placeholder="ARN..." value="${a}" onchange="saveItemData('${i.id}','arn',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.text){ const t=(p.itemData&&p.itemData[i.id+'_text'])||''; inputs+=`<input type="text" class="ck-input w-sm" placeholder="${i.inputs.text}" value="${t}" onchange="saveItemData('${i.id}','text',this.value)" onclick="event.stopPropagation()">`; }
     }
-    const stripeColor=isDone?s.color:'var(--border)';
     return `<div class="ck-row ${isDone?'ck-done':''}">
-      <div class="ck-stripe" style="background:${stripeColor}"></div>
       <div class="ck-row-inner">
         <div class="ck-left">
           <div class="ck-num">${String(idx+1).padStart(2,'0')}</div>
           <div class="ck-text ${isDone?'done':''}">${i.text}</div>
-          <span class="ck-tag ${tagMap[i.tag]||''}">${tagLabel[i.tag]||''}</span>
         </div>
         <div class="ck-right">${inputs}<div class="ck-pills">${pills}</div></div>
       </div>
@@ -1540,22 +1527,19 @@ function setCheck(itemId, val, btnEl, e){
   // update card done state + stripe
   const card=btnEl.closest('.ck-row');
   const ckText=card?.querySelector('.ck-text');
-  const stripe=card?.querySelector('.ck-stripe');
   const sid=parseInt(itemId.match(/^(\d+)/)[1]);
   const stage=STAGES.find(s=>s.id===sid);
   const isDone=!!(curVal&&curVal!=='—');
   if(card){ card.classList.toggle('ck-done', isDone); }
   if(ckText){ ckText.classList.toggle('done', isDone); }
-  if(stripe){ stripe.style.background=isDone&&stage?stage.color:'var(--border)'; }
-  // update sidebar progress bar for this stage
+  // update sidebar stage progress text
   if(stage){
     const sp=getStageProgress(p,stage);
     const sniEl=document.getElementById('sni_'+sid);
     if(sniEl){
-      const fill=sniEl.querySelector('.sni-fill');
-      const pct=sniEl.querySelector('.sni-pct');
-      if(fill){ fill.style.width=sp.pct+'%'; }
-      if(pct){ pct.textContent=sp.done+'/'+stage.items.length; }
+      const metaEl=sniEl.querySelector('.stage-nav-meta');
+      if(metaEl){ metaEl.textContent=sp.done+'/'+stage.items.length+' done'; }
+      sniEl.classList.toggle('done', sp.done===stage.items.length);
     }
   }
   p.updated=new Date().toISOString().split('T')[0];
@@ -1621,7 +1605,7 @@ function saveMeta(){
   const postBadge=document.getElementById('mtab-post-badge');
   if(postBadge){
     const hasDef=shouldShowDeficiency(p);
-    postBadge.textContent=hasDef?'RFD 1–9 &#9888;':'RFD 1–9';
+    postBadge.textContent=hasDef?'RFD 1–9 ⚠️':'RFD 1–9';
     postBadge.style.color=hasDef?'var(--warn)':'';
     postBadge.style.background=hasDef?'rgba(245,158,11,.15)':'';
   }

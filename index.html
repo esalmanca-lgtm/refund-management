@@ -800,7 +800,7 @@ async function uploadLocalDataToSupabase() {
 
 // Settings UI Handlers
 function openSupabaseSettings() {
-  document.getElementById('sb-url').value = localStorage.getItem('naqd_sb_url') || '';
+  document.getElementById('sb-url').value = localStorage.getItem('naqd_sb_url') || 'https://ntpaulanyhgcyirzqtrn.supabase.co';
   document.getElementById('sb-key').value = localStorage.getItem('naqd_sb_key') || '';
   document.getElementById('supabase-settings-overlay').classList.add('open');
 }

@@ -297,8 +297,9 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 .modal-tab-content.active{display:block;}
 /* mbody padding applied separately so it doesn't fight display:none */
 .mbody{padding:16px 20px;}
-.modal-tab-content.mbody{padding:16px 20px;}
+.modal-tab-content.mbody{padding:16px 20px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -308,7 +309,8 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
     <div class="hmeta" id="hdr-meta">0 clients · 0 projects</div>
   </div>
   <div class="hbtns">
-    <button class="btn btn-ghost btn-sm" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme" style="font-size:16px;padding:4px 9px">&#127769;</button>
+    <button class="btn btn-ghost btn-sm" id="settings-btn" onclick="openSupabaseSettings()" title="Supabase Sync Settings" style="font-size:16px;padding:4px 9px">⚙️</button>
+    <button class="btn btn-ghost btn-sm" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme" style="font-size:16px;padding:4px 9px">🌙</button>
     <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ Export</button>
     <button class="btn btn-secondary btn-sm" onclick="openAddProject()">+ Project</button>
     <button class="btn btn-primary btn-sm" onclick="openAddClient()">+ Client</button>
@@ -525,6 +527,35 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
   </div>
 </div>
 
+<!-- SUPABASE SETTINGS -->
+<div class="overlay" id="supabase-settings-overlay">
+  <div class="modal modal-sm">
+    <div class="mhead"><div class="mtitle">Supabase Sync Settings</div><button class="mclose" onclick="closeSupabaseSettings()">✕</button></div>
+    <div class="mbody">
+      <div class="form-row">
+        <div class="fg">
+          <div class="fl">Supabase Project URL</div>
+          <input class="fc" id="sb-url" type="text" placeholder="https://xxxx.supabase.co">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <div class="fl">Anon API Key</div>
+          <input class="fc" id="sb-key" type="password" placeholder="eyJhbGciOi... (anon key)">
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4;">
+        Connect to cloud database to sync projects and clients. Keep fields blank to disable cloud sync and use local storage only.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" id="sb-test-btn" onclick="testSupabaseConnection()">Test Connection</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeSupabaseSettings()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="saveSupabaseSettings()">Save & Connect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── STAGE DEFINITIONS ─────────────────────────────────────────────────────────
 // choices: array of option labels. First is "unset". selected value stored as lowercase first word.
@@ -643,15 +674,245 @@ const RFDS_DEFICIENCY = [
 ];
 
 // ── STATE ──────────────────────────────────────────────────────────────────────
-let DB = JSON.parse(localStorage.getItem('naqd_grt_v3') || 'null') || {clients:[],projects:[]};
-if(!DB.clients) DB.clients=[];
-if(!DB.projects) DB.projects=[];
+// ── STATE & SUPABASE ──────────────────────────────────────────────────────────
+let DB = { clients: [], projects: [] };
 let currentProjId = null;
+let supabaseClient = null;
 
-function save(){ localStorage.setItem('naqd_grt_v3', JSON.stringify(DB)); }
+function initSupabase() {
+  const url = localStorage.getItem('naqd_sb_url') || '';
+  const key = localStorage.getItem('naqd_sb_key') || '';
+  if (url && key && window.supabase) {
+    try {
+      supabaseClient = window.supabase.createClient(url, key);
+    } catch (e) {
+      console.error("Failed to initialize Supabase:", e);
+      supabaseClient = null;
+    }
+  } else {
+    supabaseClient = null;
+  }
+}
 
-// Seed demo
-if(DB.clients.length===0){
+// Relational Mappings
+function mapProjectFromDb(p) {
+  return {
+    id: p.id,
+    clientId: p.client_id,
+    period: p.period,
+    assigned: p.assigned,
+    priority: p.priority,
+    status: p.status,
+    notes: p.notes,
+    checks: p.checks || {},
+    itemData: p.item_data || {},
+    sdpData: p.sdp_data || {},
+    rfd: p.rfd || {},
+    updated: p.updated
+  };
+}
+
+function mapProjectToDb(p) {
+  return {
+    id: p.id,
+    client_id: p.clientId,
+    period: p.period,
+    assigned: p.assigned,
+    priority: p.priority,
+    status: p.status,
+    notes: p.notes,
+    checks: p.checks || {},
+    item_data: p.itemData || {},
+    sdp_data: p.sdpData || {},
+    rfd: p.rfd || {},
+    updated: p.updated
+  };
+}
+
+// Background Syncing
+async function syncClient(client) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('clients').upsert({
+      id: client.id,
+      name: client.name,
+      gstin: client.gstin
+    });
+    if (error) throw error;
+  } catch (e) {
+    console.error("Failed to sync client to Supabase:", e);
+  }
+}
+
+async function deleteClientFromDb(clientId) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('clients').delete().eq('id', clientId);
+    if (error) throw error;
+  } catch (e) {
+    console.error("Failed to delete client from Supabase:", e);
+  }
+}
+
+async function syncProject(project) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('projects').upsert(mapProjectToDb(project));
+    if (error) throw error;
+  } catch (e) {
+    console.error("Failed to sync project to Supabase:", e);
+  }
+}
+
+async function deleteProjectFromDb(projectId) {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('projects').delete().eq('id', projectId);
+    if (error) throw error;
+  } catch (e) {
+    console.error("Failed to delete project from Supabase:", e);
+  }
+}
+
+async function uploadLocalDataToSupabase() {
+  if (!supabaseClient) return;
+  try {
+    const clientsToSync = DB.clients.map(c => ({
+      id: c.id,
+      name: c.name,
+      gstin: c.gstin
+    }));
+    const projectsToSync = DB.projects.map(mapProjectToDb);
+    
+    if (clientsToSync.length > 0) {
+      const { error: errC } = await supabaseClient.from('clients').upsert(clientsToSync);
+      if (errC) throw errC;
+    }
+    if (projectsToSync.length > 0) {
+      const { error: errP } = await supabaseClient.from('projects').upsert(projectsToSync);
+      if (errP) throw errP;
+    }
+  } catch (e) {
+    console.error("Failed to migrate data to Supabase:", e);
+    alert("Migration failed: " + e.message);
+  }
+}
+
+// Settings UI Handlers
+function openSupabaseSettings() {
+  document.getElementById('sb-url').value = localStorage.getItem('naqd_sb_url') || '';
+  document.getElementById('sb-key').value = localStorage.getItem('naqd_sb_key') || '';
+  document.getElementById('supabase-settings-overlay').classList.add('open');
+}
+
+function closeSupabaseSettings() {
+  document.getElementById('supabase-settings-overlay').classList.remove('open');
+}
+
+async function testSupabaseConnection() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) {
+    alert("Please enter both the URL and Anon Key.");
+    return;
+  }
+  const btn = document.getElementById('sb-test-btn');
+  const originalText = btn.textContent;
+  btn.textContent = "Testing...";
+  btn.disabled = true;
+  try {
+    const testClient = window.supabase.createClient(url, key);
+    const { error } = await testClient.from('clients').select('id').limit(1);
+    if (error) throw error;
+    alert("Connection successful! Supabase connection works.");
+  } catch (e) {
+    alert("Connection failed: " + (e.message || JSON.stringify(e)));
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+async function saveSupabaseSettings() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) {
+    localStorage.removeItem('naqd_sb_url');
+    localStorage.removeItem('naqd_sb_key');
+    supabaseClient = null;
+    closeSupabaseSettings();
+    loadLocal();
+    renderAll();
+    alert("Supabase integration disabled. Reverted to local storage.");
+    return;
+  }
+  try {
+    const testClient = window.supabase.createClient(url, key);
+    const { error } = await testClient.from('clients').select('id').limit(1);
+    if (error) throw error;
+    localStorage.setItem('naqd_sb_url', url);
+    localStorage.setItem('naqd_sb_key', key);
+    supabaseClient = testClient;
+    const { count, error: countErr } = await supabaseClient.from('clients').select('*', { count: 'exact', head: true });
+    if (countErr) throw countErr;
+    if (count === 0 && (DB.clients.length > 0 || DB.projects.length > 0)) {
+      if (confirm("Supabase database is empty. Would you like to upload your existing local projects and clients to the cloud?")) {
+        await uploadLocalDataToSupabase();
+      }
+    }
+    closeSupabaseSettings();
+    await loadData();
+    alert("Connected to Supabase and synced successfully!");
+  } catch (e) {
+    alert("Connection failed: " + (e.message || JSON.stringify(e)));
+  }
+}
+
+// Loading & Saving Data
+async function loadData() {
+  initSupabase();
+  if (supabaseClient) {
+    try {
+      const meta = document.getElementById('hdr-meta');
+      if (meta) meta.innerHTML = 'Loading from Supabase...';
+      const [cRes, pRes] = await Promise.all([
+        supabaseClient.from('clients').select('*'),
+        supabaseClient.from('projects').select('*')
+      ]);
+      if (cRes.error) throw cRes.error;
+      if (pRes.error) throw pRes.error;
+      DB.clients = cRes.data || [];
+      DB.projects = (pRes.data || []).map(mapProjectFromDb);
+      saveLocal();
+    } catch (e) {
+      console.error("Supabase load failed, using local storage:", e);
+      loadLocal();
+    }
+  } else {
+    loadLocal();
+  }
+  // Check if we need to seed demo data
+  if (DB.clients.length === 0) {
+    seedDemoData();
+  }
+  renderAll();
+}
+
+function loadLocal() {
+  DB = JSON.parse(localStorage.getItem('naqd_grt_v3') || 'null') || {clients:[],projects:[]};
+  if(!DB.clients) DB.clients=[];
+  if(!DB.projects) DB.projects=[];
+}
+
+function saveLocal() {
+  localStorage.setItem('naqd_grt_v3', JSON.stringify(DB));
+}
+
+function save() {
+  saveLocal();
+}
+
+function seedDemoData() {
   DB.clients=[
     {id:'cl1',name:'Seragu Enterprises',gstin:'32AAJCS1234F1Z5'},
     {id:'cl2',name:'Modern Group Contracting',gstin:'29AADCM5678G1Z3'},
@@ -672,7 +933,7 @@ if(DB.clients.length===0){
   DB.projects[0].checks['2a']='collected'; DB.projects[0].checks['2b']='collected'; DB.projects[0].checks['2c']='collected';
   DB.projects[0].checks['2d']='collected'; DB.projects[0].checks['2e']='n/a'; DB.projects[0].checks['2f']='collected'; DB.projects[0].checks['2g']='collected'; DB.projects[0].checks['2h']='generated';
   DB.projects[0].checks['3a']='matched'; DB.projects[0].checks['3b']='matched';
-  save();
+  saveLocal();
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -1219,6 +1480,7 @@ function setCheck(itemId, val, btnEl, e){
   }
   p.updated=new Date().toISOString().split('T')[0];
   save(); renderStats(); renderProjects();
+  syncProject(p);
 }
 
 function saveItemData(itemId, field, val){
@@ -1227,6 +1489,7 @@ function saveItemData(itemId, field, val){
   p.itemData[itemId+'_'+field]=val;
   p.updated=new Date().toISOString().split('T')[0];
   save();
+  syncProject(p);
 }
 
 function saveSDP(sid){
@@ -1241,6 +1504,7 @@ function saveSDP(sid){
   const ne=document.getElementById('sdp_'+sid+'_note'); if(ne) p.sdpData[key].note=ne.value;
   p.updated=new Date().toISOString().split('T')[0];
   save(); renderStats(); renderProjects();
+  syncProject(p);
 }
 
 function setRFD(key, field, val, btnEl, expandId, isDef, e){
@@ -1260,6 +1524,7 @@ function setRFD(key, field, val, btnEl, expandId, isDef, e){
   save();
   buildRFD(p);
   renderProjects();
+  syncProject(p);
 }
 
 function saveMeta(){
@@ -1280,13 +1545,16 @@ function saveMeta(){
     postBadge.style.color=hasDef?'var(--warn)':'';
     postBadge.style.background=hasDef?'rgba(245,158,11,.15)':'';
   }
+  syncProject(p);
 }
 
 function closeDetail(){ document.getElementById('detail-overlay').classList.remove('open'); currentProjId=null; activeRfdKey=null; activeRfdDefKey=null; activeStageId=1; }
 function deleteProject(){
   if(!confirm('Delete this project?')) return;
-  DB.projects=DB.projects.filter(p=>p.id!==currentProjId);
+  const id=currentProjId;
+  DB.projects=DB.projects.filter(p=>p.id!==id);
   save(); closeDetail(); renderAll();
+  deleteProjectFromDb(id);
 }
 
 // ── ADD CLIENT ─────────────────────────────────────────────────────────────────
@@ -1295,10 +1563,12 @@ function closeAddClient(){ document.getElementById('add-client-overlay').classLi
 function saveAddClient(){
   const name=document.getElementById('ac-name').value.trim();
   if(!name){ alert('Name required'); return; }
-  DB.clients.unshift({id:'cl'+Date.now(),name,gstin:document.getElementById('ac-gstin').value.trim().toUpperCase()});
+  const newClient = {id:'cl'+Date.now(),name,gstin:document.getElementById('ac-gstin').value.trim().toUpperCase()};
+  DB.clients.unshift(newClient);
   save(); closeAddClient();
   document.getElementById('ac-name').value='';document.getElementById('ac-gstin').value='';
   renderAll();
+  syncClient(newClient);
 }
 
 // ── EDIT CLIENT ────────────────────────────────────────────────────────────────
@@ -1316,6 +1586,7 @@ function saveEditClient(){
   const name=document.getElementById('ec-name').value.trim(); if(!name){ alert('Name required'); return; }
   c.name=name; c.gstin=document.getElementById('ec-gstin').value.trim().toUpperCase();
   save(); closeEditClient(); renderAll();
+  syncClient(c);
 }
 function deleteClient(){
   const id=document.getElementById('ec-id').value;
@@ -1323,6 +1594,7 @@ function deleteClient(){
   DB.clients=DB.clients.filter(c=>c.id!==id);
   DB.projects=DB.projects.filter(p=>p.clientId!==id);
   save(); closeEditClient(); renderAll();
+  deleteClientFromDb(id);
 }
 
 // ── ADD PROJECT ────────────────────────────────────────────────────────────────
@@ -1337,14 +1609,16 @@ function saveAddProject(){
   const period=document.getElementById('ap-period').value.trim();
   if(!clientId){ alert('Select a client'); return; }
   if(!period){ alert('Period required'); return; }
-  DB.projects.unshift({id:'p'+Date.now(),clientId,period,
+  const newProj = {id:'p'+Date.now(),clientId,period,
     assigned:document.getElementById('ap-assigned').value,
     priority:document.getElementById('ap-priority').value,
     status:'new',notes:'',checks:{},itemData:{},sdpData:{},rfd:{},
-    updated:new Date().toISOString().split('T')[0]});
+    updated:new Date().toISOString().split('T')[0]};
+  DB.projects.unshift(newProj);
   save(); closeAddProject();
   document.getElementById('ap-period').value='';
   renderAll();
+  syncProject(newProj);
 }
 function addProjForClient(clientId){ openAddProject(); setTimeout(()=>{ document.getElementById('ap-client').value=clientId; },50); }
 
@@ -1377,7 +1651,7 @@ function exportCSV(){
 }
 
 // overlay close on bg click
-['detail-overlay','add-client-overlay','add-project-overlay','edit-client-overlay'].forEach(id=>{
+['detail-overlay','add-client-overlay','add-project-overlay','edit-client-overlay','supabase-settings-overlay'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{ if(e.target===e.currentTarget) document.getElementById(id).classList.remove('open'); });
 });
 
@@ -1397,7 +1671,7 @@ function toggleTheme(){
 }
 
 applyTheme(currentTheme);
-renderAll();
+loadData();
 </script>
 </body>
 </html>

@@ -583,7 +583,50 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
     <div class="mhead"><div class="mtitle">Add Project</div><button class="mclose" onclick="closeAddProject()">✕</button></div>
     <div class="mbody">
       <div class="form-row"><div class="fg"><div class="fl">Client <span class="req">*</span></div><select class="fc" id="ap-client"><option value="">— Select Client —</option></select></div></div>
-      <div class="form-row"><div class="fg"><div class="fl">Filing Period <span class="req">*</span></div><input class="fc" id="ap-period" type="text" placeholder="e.g. Apr–Jun 2024-25"></div></div>
+      <div class="form-row">
+        <div class="fg">
+          <div class="fl">Filing Period <span class="req">*</span></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="fc" id="ap-from-month" style="flex:1;">
+              <option value="Apr" selected>Apr</option>
+              <option value="May">May</option>
+              <option value="Jun">Jun</option>
+              <option value="Jul">Jul</option>
+              <option value="Aug">Aug</option>
+              <option value="Sep">Sep</option>
+              <option value="Oct">Oct</option>
+              <option value="Nov">Nov</option>
+              <option value="Dec">Dec</option>
+              <option value="Jan">Jan</option>
+              <option value="Feb">Feb</option>
+              <option value="Mar">Mar</option>
+            </select>
+            <span style="color:var(--muted);font-size:12px;user-select:none;">to</span>
+            <select class="fc" id="ap-to-month" style="flex:1;">
+              <option value="Apr">Apr</option>
+              <option value="May">May</option>
+              <option value="Jun" selected>Jun</option>
+              <option value="Jul">Jul</option>
+              <option value="Aug">Aug</option>
+              <option value="Sep">Sep</option>
+              <option value="Oct">Oct</option>
+              <option value="Nov">Nov</option>
+              <option value="Dec">Dec</option>
+              <option value="Jan">Jan</option>
+              <option value="Feb">Feb</option>
+              <option value="Mar">Mar</option>
+            </select>
+            <select class="fc" id="ap-year" style="flex:1.2;">
+              <option value="2023-24">2023-24</option>
+              <option value="2024-25">2024-25</option>
+              <option value="2025-26">2025-26</option>
+              <option value="2026-27" selected>2026-27</option>
+              <option value="2027-28">2027-28</option>
+              <option value="2028-29">2028-29</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <div class="form-row">
         <div class="fg"><div class="fl">Assign To</div><select class="fc" id="ap-assigned"><option>Habeeb</option><option>Faisal</option><option>Arshed V</option><option>Naqd</option></select></div>
         <div class="fg"><div class="fl">Priority</div><select class="fc" id="ap-priority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
@@ -1645,9 +1688,23 @@ function openAddProject(){
 function closeAddProject(){ document.getElementById('add-project-overlay').classList.remove('open'); }
 function saveAddProject(){
   const clientId=document.getElementById('ap-client').value;
-  const period=document.getElementById('ap-period').value.trim();
   if(!clientId){ alert('Select a client'); return; }
-  if(!period){ alert('Period required'); return; }
+  
+  const fromMonth=document.getElementById('ap-from-month').value;
+  const toMonth=document.getElementById('ap-to-month').value;
+  const year=document.getElementById('ap-year').value;
+  
+  const fiscalMonths = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const fromIdx = fiscalMonths.indexOf(fromMonth);
+  const toIdx = fiscalMonths.indexOf(toMonth);
+  
+  if(toIdx < fromIdx){
+    alert('Invalid Filing Period range: "To Month" cannot be chronologically before "From Month".');
+    return;
+  }
+  
+  const period = fromMonth === toMonth ? `${fromMonth} ${year}` : `${fromMonth}–${toMonth} ${year}`;
+  
   const newProj = {id:'p'+Date.now(),clientId,period,
     assigned:document.getElementById('ap-assigned').value,
     priority:document.getElementById('ap-priority').value,
@@ -1655,7 +1712,11 @@ function saveAddProject(){
     updated:new Date().toISOString().split('T')[0]};
   DB.projects.unshift(newProj);
   save(); closeAddProject();
-  document.getElementById('ap-period').value='';
+  
+  document.getElementById('ap-from-month').value='Apr';
+  document.getElementById('ap-to-month').value='Jun';
+  document.getElementById('ap-year').value='2026-27';
+  
   renderAll();
   syncProject(newProj);
 }

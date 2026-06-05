@@ -680,8 +680,8 @@ let currentProjId = null;
 let supabaseClient = null;
 
 function initSupabase() {
-  const url = localStorage.getItem('naqd_sb_url') || '';
-  const key = localStorage.getItem('naqd_sb_key') || '';
+  const url = localStorage.getItem('naqd_sb_url') || 'https://ntpaulanyhgcyirzqtrn.supabase.co';
+  const key = localStorage.getItem('naqd_sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cGF1bGFueWhnY3lpcnpxdHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NDkxMjEsImV4cCI6MjA5NjIyNTEyMX0.E4eitAS2bDOqvrSjzGJFwdbIHxcVQH94T1S-mpMAKnU';
   if (url && key && window.supabase) {
     try {
       supabaseClient = window.supabase.createClient(url, key);
@@ -801,7 +801,7 @@ async function uploadLocalDataToSupabase() {
 // Settings UI Handlers
 function openSupabaseSettings() {
   document.getElementById('sb-url').value = localStorage.getItem('naqd_sb_url') || 'https://ntpaulanyhgcyirzqtrn.supabase.co';
-  document.getElementById('sb-key').value = localStorage.getItem('naqd_sb_key') || '';
+  document.getElementById('sb-key').value = localStorage.getItem('naqd_sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50cGF1bGFueWhnY3lpcnpxdHJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NDkxMjEsImV4cCI6MjA5NjIyNTEyMX0.E4eitAS2bDOqvrSjzGJFwdbIHxcVQH94T1S-mpMAKnU';
   document.getElementById('supabase-settings-overlay').classList.add('open');
 }
 

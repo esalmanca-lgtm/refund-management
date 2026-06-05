@@ -250,14 +250,15 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 
 /* Compact Status Pills */
 .ck-pills{display:flex;gap:3px;flex-wrap:nowrap;}
-.ck-pill{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-weight:500;cursor:pointer;transition:all .12s;white-space:nowrap;}
+.ck-pill{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap;}
 .ck-pill:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(14,165,233,.04);}
-.ck-pill.sel-yes,.ck-pill.sel-matched,.ck-pill.sel-collected,.ck-pill.sel-done,.ck-pill.sel-confirmed,.ck-pill.sel-date-selected,.ck-pill.sel-filled,.ck-pill.sel-generated,.ck-pill.sel-uploaded,.ck-pill.sel-filed,.ck-pill.sel-prepared,.ck-pill.sel-marked,.ck-pill.sel-reconciled{background:rgba(16,185,129,.1);border-color:var(--accent);color:var(--accent);}
-.ck-pill.sel-no,.ck-pill.sel-mismatch,.ck-pill.sel-igst-paid{background:rgba(239,68,68,.08);border-color:var(--danger);color:var(--danger);}
-.ck-pill.sel-na{background:rgba(100,116,139,.08);border-color:var(--muted);color:var(--muted);}
-.ck-pill.sel-excluded{background:rgba(239,68,68,.08);border-color:var(--danger);color:var(--danger);}
-.ck-pill.sel-nil{background:rgba(100,116,139,.08);border-color:var(--muted);color:var(--muted);}
-.ck-pill.sel-amount{background:rgba(245,158,11,.08);border-color:var(--warn);color:var(--warn);}
+.ck-pill.sel-yes,.ck-pill.sel-matched,.ck-pill.sel-collected,.ck-pill.sel-done,.ck-pill.sel-confirmed,.ck-pill.sel-date-selected,.ck-pill.sel-filled,.ck-pill.sel-generated,.ck-pill.sel-uploaded,.ck-pill.sel-filed,.ck-pill.sel-prepared,.ck-pill.sel-marked,.ck-pill.sel-reconciled{background:var(--accent);border-color:var(--accent);color:#0d1117;}
+[data-theme="light"] .ck-pill.sel-yes,[data-theme="light"] .ck-pill.sel-matched,[data-theme="light"] .ck-pill.sel-collected,[data-theme="light"] .ck-pill.sel-done,[data-theme="light"] .ck-pill.sel-confirmed,[data-theme="light"] .ck-pill.sel-date-selected,[data-theme="light"] .ck-pill.sel-filled,[data-theme="light"] .ck-pill.sel-generated,[data-theme="light"] .ck-pill.sel-uploaded,[data-theme="light"] .ck-pill.sel-filed,[data-theme="light"] .ck-pill.sel-prepared,[data-theme="light"] .ck-pill.sel-marked,[data-theme="light"] .ck-pill.sel-reconciled{color:#ffffff;}
+.ck-pill.sel-no,.ck-pill.sel-mismatch,.ck-pill.sel-igst-paid{background:var(--danger);border-color:var(--danger);color:#ffffff;}
+.ck-pill.sel-na,.ck-pill.sel-nil{background:var(--muted);border-color:var(--muted);color:#ffffff;}
+.ck-pill.sel-excluded{background:var(--danger);border-color:var(--danger);color:#ffffff;}
+.ck-pill.sel-amount{background:var(--warn);border-color:var(--warn);color:#0d1117;}
+[data-theme="light"] .ck-pill.sel-amount{color:#ffffff;}
 
 /* STAGE DATA SECTION */
 .sc-data{margin:8px 0 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);}

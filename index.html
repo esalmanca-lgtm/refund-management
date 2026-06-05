@@ -977,10 +977,6 @@ async function loadData() {
   } else {
     loadLocal();
   }
-  // Check if we need to seed demo data
-  if (DB.clients.length === 0) {
-    seedDemoData();
-  }
   renderAll();
 }
 
@@ -995,30 +991,6 @@ function saveLocal() {
 }
 
 function save() {
-  saveLocal();
-}
-
-function seedDemoData() {
-  DB.clients=[
-    {id:'cl1',name:'Seragu Enterprises',gstin:'32AAJCS1234F1Z5'},
-    {id:'cl2',name:'Modern Group Contracting',gstin:'29AADCM5678G1Z3'},
-    {id:'cl3',name:'Sunrise Spices Export',gstin:'32AADCS9012H1Z1'},
-    {id:'cl4',name:'Kerala Cashew Corp',gstin:'32AABCK3456J1Z7'},
-  ];
-  DB.projects=[
-    {id:'p1',clientId:'cl1',period:'Apr–Jun 2024-25',assigned:'Habeeb',priority:'High',status:'inprogress',notes:'EGM pending 3 SBs.',checks:{},itemData:{},sdpData:{s7:{arn:'AA290524000001R',amount:'485000',date:'2026-05-10'}},rfd:{},updated:'2026-06-02'},
-    {id:'p2',clientId:'cl2',period:'Jul–Sep 2024-25',assigned:'Faisal',priority:'Medium',status:'filed',notes:'',checks:{},itemData:{},sdpData:{s7:{arn:'AA291024000023F',amount:'320000',date:'2026-04-20'}},rfd:{rfd2:{status:'Received',date:'2026-04-22'},rfd5:{status:'Issued',date:'2026-05-10',amount:'318500'}},updated:'2026-05-28'},
-    {id:'p3',clientId:'cl3',period:'Oct–Dec 2024-25',assigned:'Arshed V',priority:'High',status:'deficiency',notes:'RFD-03 received. eBRC missing.',checks:{},itemData:{},sdpData:{},rfd:{rfd3:{status:'Received',date:'2026-05-28',note:'eBRC not attached for 4 SBs'}},updated:'2026-06-01'},
-    {id:'p4',clientId:'cl4',period:'Jan–Mar 2024-25',assigned:'Habeeb',priority:'Low',status:'received',notes:'Refund credited.',checks:{},itemData:{},sdpData:{s7:{arn:'AA320325000067R',amount:'92000',date:'2026-03-15'}},rfd:{rfd9:{status:'Credited',date:'2026-05-15',amount:'91800'}},updated:'2026-05-15'},
-    {id:'p5',clientId:'cl1',period:'Jul–Sep 2024-25',assigned:'Faisal',priority:'Medium',status:'new',notes:'',checks:{},itemData:{},sdpData:{},rfd:{},updated:'2026-06-03'},
-  ];
-  // Prefill checks for p1
-  ['1a','1b','1c','1d','1e','1f','2a','2b','2c','2d','2e','2f','2g','2h','3a','3b'].forEach(x=>DB.projects[0].checks[x]='matched');
-  DB.projects[0].checks['1a']='date selected'; DB.projects[0].checks['1b']='yes'; DB.projects[0].checks['1c']='confirmed';
-  DB.projects[0].checks['1d']='yes'; DB.projects[0].checks['1e']='confirmed'; DB.projects[0].checks['1f']='yes';
-  DB.projects[0].checks['2a']='collected'; DB.projects[0].checks['2b']='collected'; DB.projects[0].checks['2c']='collected';
-  DB.projects[0].checks['2d']='collected'; DB.projects[0].checks['2e']='n/a'; DB.projects[0].checks['2f']='collected'; DB.projects[0].checks['2g']='collected'; DB.projects[0].checks['2h']='generated';
-  DB.projects[0].checks['3a']='matched'; DB.projects[0].checks['3b']='matched';
   saveLocal();
 }
 

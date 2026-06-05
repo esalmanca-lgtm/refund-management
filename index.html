@@ -241,7 +241,8 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 .t-sys{background:rgba(16,185,129,.08);color:var(--accent);}
 .t-ver{background:rgba(245,158,11,.08);color:var(--warn);}
 .t-act{background:rgba(239,68,68,.08);color:var(--danger);}
-.ck-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.ck-right{display:grid;grid-template-columns:140px 170px;gap:12px;align-items:center;flex-shrink:0;}
+.ck-input-col{display:flex;justify-content:flex-end;width:140px;flex-shrink:0;}
 .ck-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;outline:none;}
 .ck-input:focus{border-color:var(--accent2);}
 .ck-input.mono{font-family:'JetBrains Mono',monospace;}
@@ -249,7 +250,7 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 .ck-input.w-md{width:120px;}
 
 /* Compact Status Pills */
-.ck-pills{display:flex;gap:3px;flex-wrap:nowrap;}
+.ck-pills{display:flex;gap:3px;flex-wrap:nowrap;justify-content:flex-end;width:170px;flex-shrink:0;}
 .ck-pill{padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;transition:all .12s;white-space:nowrap;}
 .ck-pill:hover{border-color:var(--accent2);color:var(--accent2);background:rgba(14,165,233,.04);}
 .ck-pill.sel-yes,.ck-pill.sel-matched,.ck-pill.sel-collected,.ck-pill.sel-done,.ck-pill.sel-confirmed,.ck-pill.sel-date-selected,.ck-pill.sel-filled,.ck-pill.sel-generated,.ck-pill.sel-uploaded,.ck-pill.sel-filed,.ck-pill.sel-prepared,.ck-pill.sel-marked,.ck-pill.sel-reconciled{background:var(--accent);border-color:var(--accent);color:#0d1117;}
@@ -1289,13 +1290,14 @@ function renderStageContent(p, sid){
       const isSelected=cv===v;
       return `<button class="ck-pill ${isSelected?'sel-'+v:''}" onclick="setCheck('${i.id}','${c.toLowerCase()}',this,event)">${c}</button>`;
     }).join('');
-    let inputs='';
+    let inputs='<div class="ck-input-col">';
     if(i.inputs){
       if(i.inputs.date){ const d=(p.itemData&&p.itemData[i.id+'_date'])||''; inputs+=`<input type="date" class="ck-input w-sm" value="${d}" onchange="saveItemData('${i.id}','date',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.amount){ const a=(p.itemData&&p.itemData[i.id+'_amount'])||''; inputs+=`<input type="number" class="ck-input w-sm mono" placeholder="₹" value="${a}" onchange="saveItemData('${i.id}','amount',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.arn){ const a=(p.itemData&&p.itemData[i.id+'_arn'])||''; inputs+=`<input type="text" class="ck-input w-md mono" placeholder="ARN..." value="${a}" onchange="saveItemData('${i.id}','arn',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.text){ const t=(p.itemData&&p.itemData[i.id+'_text'])||''; inputs+=`<input type="text" class="ck-input w-sm" placeholder="${i.inputs.text}" value="${t}" onchange="saveItemData('${i.id}','text',this.value)" onclick="event.stopPropagation()">`; }
     }
+    inputs+='</div>';
     return `<div class="ck-row ${isDone?'ck-done':''}">
       <div class="ck-row-inner">
         <div class="ck-left">

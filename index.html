@@ -241,8 +241,8 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 .t-sys{background:rgba(16,185,129,.08);color:var(--accent);}
 .t-ver{background:rgba(245,158,11,.08);color:var(--warn);}
 .t-act{background:rgba(239,68,68,.08);color:var(--danger);}
-.ck-right{display:grid;grid-template-columns:140px 170px;gap:12px;align-items:center;flex-shrink:0;}
-.ck-input-col{display:flex;justify-content:flex-end;width:140px;flex-shrink:0;}
+.ck-right{display:grid;grid-template-columns:minmax(140px,auto) 170px;gap:12px;align-items:center;flex-shrink:0;}
+.ck-input-col{display:flex;justify-content:flex-end;gap:6px;align-items:center;}
 .ck-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:11px;font-family:'DM Sans',sans-serif;outline:none;}
 .ck-input:focus{border-color:var(--accent2);}
 .ck-input.mono{font-family:'JetBrains Mono',monospace;}
@@ -779,7 +779,7 @@ const STAGES = [
     {id:"7j", text:"LUT", choices:["—","Uploaded"], tag:"doc"},
     {id:"7k", text:"Refund Calculation sheet", choices:["—","Uploaded"], tag:"doc"},
     {id:"7l", text:"File with EVC", choices:["—","Filed"], tag:"sys", inputs:{text:"EVC"}},
-    {id:"7m", text:"ARN noted", choices:["—","Done"], tag:"doc", inputs:{arn:true}},
+    {id:"7m", text:"ARN noted", choices:["—","Done"], tag:"doc", inputs:{arn:true, amount:true}},
   ]
 },
 ];
@@ -1020,7 +1020,7 @@ async function loadData() {
     loadLocal();
   }
   
-  // Migrate / initialize '1a' check values
+  // Migrate / initialize '1a' check values and stage 7 data sync
   let migrated = false;
   DB.projects.forEach(p => {
     if (p.period && (!p.checks || !p.checks['1a'])) {
@@ -1036,6 +1036,31 @@ async function loadData() {
         p.itemData['1a_to'] = monthRangeParts[1] || monthRangeParts[0];
       }
       migrated = true;
+    }
+    // Backward compatibility: sync checklist 7m inputs to sdpData.s7
+    if (p.itemData && (p.itemData['7m_arn'] || p.itemData['7m_amount'])) {
+      if (!p.sdpData) p.sdpData = {};
+      if (!p.sdpData.s7) p.sdpData.s7 = {};
+      if (p.itemData['7m_arn'] && p.sdpData.s7.arn !== p.itemData['7m_arn']) {
+        p.sdpData.s7.arn = p.itemData['7m_arn'];
+        migrated = true;
+      }
+      if (p.itemData['7m_amount'] && p.sdpData.s7.amount !== p.itemData['7m_amount']) {
+        p.sdpData.s7.amount = p.itemData['7m_amount'];
+        migrated = true;
+      }
+    }
+    // Forward compatibility: sync sdpData.s7 inputs to checklist 7m if empty
+    if (p.sdpData && p.sdpData.s7) {
+      if (!p.itemData) p.itemData = {};
+      if (p.sdpData.s7.arn && !p.itemData['7m_arn']) {
+        p.itemData['7m_arn'] = p.sdpData.s7.arn;
+        migrated = true;
+      }
+      if (p.sdpData.s7.amount && !p.itemData['7m_amount']) {
+        p.itemData['7m_amount'] = p.sdpData.s7.amount;
+        migrated = true;
+      }
     }
   });
   if (migrated) {
@@ -1374,20 +1399,7 @@ function renderStageContent(p, sid){
     notesLbl.textContent = `Remarks — ${s.name}`;
   }
 
-  // stage data fields
-  let dataFields='';
-  if(s.sdp.date) dataFields+=`<div class="sc-data-field"><div class="sc-data-label">Date</div><input type="date" class="sc-data-input" id="sdp_${s.id}_date" value="${sd.date||''}" onchange="saveSDP(${s.id})"></div>`;
-  if(s.sdp.arn) dataFields+=`<div class="sc-data-field"><div class="sc-data-label">ARN</div><input type="text" class="sc-data-input mono" id="sdp_${s.id}_arn" value="${sd.arn||''}" placeholder="ARN-..." onchange="saveSDP(${s.id})"></div>`;
-  if(s.sdp.amount) dataFields+=`<div class="sc-data-field"><div class="sc-data-label">Amount (₹)</div><input type="number" class="sc-data-input mono" id="sdp_${s.id}_amount" value="${sd.amount||''}" placeholder="0" onchange="saveSDP(${s.id})"></div>`;
-
-  const dataPanel = dataFields
-    ? `<div style="padding:14px 18px">
-        <div class="sc-data" style="border-color:${s.color}30">
-          <div class="sc-data-title" style="color:${s.color}">📊 Stage Data</div>
-          <div class="sc-data-grid">${dataFields}</div>
-        </div>
-      </div>`
-    : '';
+  const dataPanel = '';
 
   panel.innerHTML=`
     <div class="sc-header">
@@ -1632,6 +1644,13 @@ function saveItemData(itemId, field, val){
     }
   }
   
+  if(itemId==='7m'){
+    if(!p.sdpData) p.sdpData={};
+    if(!p.sdpData.s7) p.sdpData.s7={};
+    if(field==='arn') p.sdpData.s7.arn=val;
+    if(field==='amount') p.sdpData.s7.amount=val;
+  }
+  
   p.updated=new Date().toISOString().split('T')[0];
   save();
   
@@ -1645,6 +1664,11 @@ function saveItemData(itemId, field, val){
         sniEl.classList.toggle('done', sp.done===stage.items.length);
       }
     }
+    renderStats();
+    renderProjects();
+  }
+  
+  if(itemId==='7m'){
     renderStats();
     renderProjects();
   }

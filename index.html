@@ -1347,8 +1347,8 @@ function renderStageContent(p, sid){
     const curVal=(p.checks&&p.checks[i.id])||'';
     const isDone=!!(curVal&&curVal!=='—');
     const pills=i.choices.filter(c=>c!=='—').map(c=>{
-      const v=c.toLowerCase().replace(/ /g,'-');
-      const cv=curVal.toLowerCase().replace(/ /g,'-');
+      const v=c.toLowerCase().replace(/ /g,'-').replace(/\//g,'');
+      const cv=curVal.toLowerCase().replace(/ /g,'-').replace(/\//g,'');
       const isSelected=cv===v;
       return `<button class="ck-pill ${isSelected?'sel-'+v:''}" onclick="setCheck('${i.id}','${c.toLowerCase()}',this,event)">${c}</button>`;
     }).join('');

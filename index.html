@@ -1603,7 +1603,7 @@ function setCheck(itemId, val, btnEl, e){
   if(group){
     group.querySelectorAll('.ck-pill').forEach(b=>{ b.className='ck-pill'; });
     if(curVal){
-      const v=curVal.toLowerCase().replace(/ /g,'-');
+      const v=curVal.toLowerCase().replace(/ /g,'-').replace(/\//g,'');
       btnEl.className='ck-pill sel-'+v;
     }
   }

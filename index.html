@@ -515,7 +515,7 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
     <div class="modal-tab-content active" id="mtab-content-pre" style="padding:16px 20px">
       <div id="d-stages"></div>
       <div style="margin-top:14px">
-        <div class="section-lbl">Notes / Remarks</div>
+        <div class="section-lbl" id="d-notes-lbl">Notes / Remarks</div>
         <textarea class="notes-area" id="d-notes" placeholder="Officer name, follow-up dates, remarks..." onchange="saveMeta()"></textarea>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
@@ -1364,12 +1364,30 @@ function renderStageContent(p, sid){
     </div>`;
   }).join('');
 
+  // Update the notes/remarks area dynamically for the active stage
+  const notesArea = document.getElementById('d-notes');
+  const notesLbl = document.getElementById('d-notes-lbl');
+  if (notesArea) {
+    notesArea.value = sd.note || '';
+  }
+  if (notesLbl) {
+    notesLbl.textContent = `Remarks — ${s.name}`;
+  }
+
   // stage data fields
   let dataFields='';
   if(s.sdp.date) dataFields+=`<div class="sc-data-field"><div class="sc-data-label">Date</div><input type="date" class="sc-data-input" id="sdp_${s.id}_date" value="${sd.date||''}" onchange="saveSDP(${s.id})"></div>`;
   if(s.sdp.arn) dataFields+=`<div class="sc-data-field"><div class="sc-data-label">ARN</div><input type="text" class="sc-data-input mono" id="sdp_${s.id}_arn" value="${sd.arn||''}" placeholder="ARN-..." onchange="saveSDP(${s.id})"></div>`;
   if(s.sdp.amount) dataFields+=`<div class="sc-data-field"><div class="sc-data-label">Amount (₹)</div><input type="number" class="sc-data-input mono" id="sdp_${s.id}_amount" value="${sd.amount||''}" placeholder="0" onchange="saveSDP(${s.id})"></div>`;
-  dataFields+=`<div class="sc-data-field sc-data-full"><div class="sc-data-label">Remarks</div><textarea class="sc-data-input sc-data-textarea" id="sdp_${s.id}_note" onchange="saveSDP(${s.id})">${sd.note||''}</textarea></div>`;
+
+  const dataPanel = dataFields
+    ? `<div style="padding:14px 18px">
+        <div class="sc-data" style="border-color:${s.color}30">
+          <div class="sc-data-title" style="color:${s.color}">📊 Stage Data</div>
+          <div class="sc-data-grid">${dataFields}</div>
+        </div>
+      </div>`
+    : '';
 
   panel.innerHTML=`
     <div class="sc-header">
@@ -1378,12 +1396,7 @@ function renderStageContent(p, sid){
       <div class="sc-prog-text">${sp.done}/${s.items.length} done</div>
     </div>
     <div class="ck-list">${rows}</div>
-    <div style="padding:14px 18px">
-      <div class="sc-data" style="border-color:${s.color}30">
-        <div class="sc-data-title" style="color:${s.color}">&#128202; Stage Data</div>
-        <div class="sc-data-grid">${dataFields}</div>
-      </div>
-    </div>`;
+    ${dataPanel}`;
 }
 
 let activeRfdKey = null;   // key for main pipeline
@@ -1679,7 +1692,14 @@ function saveMeta(){
   p.status=document.getElementById('d-status').value;
   p.priority=document.getElementById('d-priority').value;
   p.assigned=document.getElementById('d-assigned').value;
-  p.notes=document.getElementById('d-notes').value;
+  
+  const noteVal = document.getElementById('d-notes').value;
+  p.notes = noteVal;
+  if(!p.sdpData) p.sdpData={};
+  const key = 's' + activeStageId;
+  if(!p.sdpData[key]) p.sdpData[key]={};
+  p.sdpData[key].note = noteVal;
+  
   p.updated=new Date().toISOString().split('T')[0];
   save(); renderStats(); renderProjects();
   syncDefSection(p);
@@ -1804,7 +1824,13 @@ function exportCSV(){
       p.sdpData?.s7?.amount||'',
       prog.pct+'%',
       p.updated||'',
-      p.notes||''
+      (() => {
+        const combined = STAGES.map(s => {
+          const note = (p.sdpData && p.sdpData['s' + s.id] && p.sdpData['s' + s.id].note) || '';
+          return note ? `[S${s.id}] ${note}` : '';
+        }).filter(Boolean).join(' | ');
+        return combined || p.notes || '';
+      })()
     ];
   });
   const escape = v => '"' + String(v).replace(/"/g, '""') + '"';

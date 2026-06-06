@@ -694,11 +694,10 @@ td{padding:9px 11px;font-size:13px;white-space:nowrap;}
 const STAGES = [
 {
   id:1, name:"Identify Filing Period", color:"#6366f1",
-  sdp:{date:true, note:true},
+  sdp:{note:true},
   items:[
-    {id:"1a", text:"Select filing period for refund", choices:["—","Date Selected"], tag:"act", inputs:{date:true}},
+    {id:"1a", text:"Select filing period for refund", choices:[], tag:"act", inputs:{monthRange:true}},
     {id:"1b", text:"LUT filed & validated for period", choices:["—","Yes","No"], tag:"ver"},
-    {id:"1c", text:"No. of SBs in the period", choices:["—","Confirmed"], tag:"ver", inputs:{text:"Count"}},
     {id:"1d", text:"GSTR-1 & 3B filed for period", choices:["—","Yes","No"], tag:"ver"},
     {id:"1e", text:"Confirm no IGST paid on export", choices:["—","Confirmed","IGST Paid"], tag:"ver"},
     {id:"1f", text:"Within 2-year limitation from period", choices:["—","Yes","No"], tag:"ver"},
@@ -707,7 +706,7 @@ const STAGES = [
 },
 {
   id:2, name:"Data Collection", color:"#0ea5e9",
-  sdp:{date:true, note:true},
+  sdp:{note:true},
   items:[
     {id:"2a", text:"Pull GSTR-1 data from site", choices:["—","Collected"], tag:"sys"},
     {id:"2b", text:"Pull GSTR-3B data from site", choices:["—","Collected"], tag:"sys"},
@@ -721,7 +720,7 @@ const STAGES = [
 },
 {
   id:3, name:"Match & Reconcile", color:"#06b6d4",
-  sdp:{date:true, amount:true, note:true},
+  sdp:{amount:true, note:true},
   items:[
     {id:"3a", text:"Match SB with ICEGate enquiry", choices:["—","Matched","Mismatch"], tag:"ver"},
     {id:"3b", text:"Match SB with GSTR-1", choices:["—","Matched","Mismatch"], tag:"ver"},
@@ -732,7 +731,7 @@ const STAGES = [
 },
 {
   id:4, name:"Statement 3 Preparation", color:"#10b981",
-  sdp:{date:true, amount:true, note:true},
+  sdp:{amount:true, note:true},
   items:[
     {id:"4a", text:"Statement 3 utility JSON generated", choices:["—","Yes"], tag:"sys"},
     {id:"4b", text:"Statement 3 PDF generated", choices:["—","Yes"], tag:"doc"},
@@ -743,7 +742,7 @@ const STAGES = [
 },
 {
   id:5, name:"Annexure B (GSTR-2B)", color:"#00e5a0",
-  sdp:{date:true, amount:true, note:true},
+  sdp:{amount:true, note:true},
   items:[
     {id:"5a", text:"Mark capital goods & personal ITC in Anx B", choices:["—","Marked","N/A"], tag:"act"},
     {id:"5b", text:"Fill all HSN codes", choices:["—","Filled"], tag:"doc"},
@@ -755,7 +754,7 @@ const STAGES = [
 },
 {
   id:6, name:"Calculation", color:"#f59e0b",
-  sdp:{date:true, amount:true, note:true},
+  sdp:{amount:true, note:true},
   items:[
     {id:"6a", text:"Fill calculation sheet", choices:["—","Filled"], tag:"act"},
     {id:"6b", text:"Exclude No-EGM SBs", choices:["—","N/A","Excluded"], tag:"act", inputs:{text:"Count"}},
@@ -766,7 +765,7 @@ const STAGES = [
 },
 {
   id:7, name:"Upload & File (RFD-01)", color:"#ef4444",
-  sdp:{date:true, arn:true, amount:true, note:true},
+  sdp:{arn:true, amount:true, note:true},
   items:[
     {id:"7a", text:"Cover note", choices:["—","Uploaded"], tag:"doc"},
     {id:"7b", text:"Undertaking — 2.20", choices:["—","Uploaded"], tag:"doc"},
@@ -1020,6 +1019,29 @@ async function loadData() {
   } else {
     loadLocal();
   }
+  
+  // Migrate / initialize '1a' check values
+  let migrated = false;
+  DB.projects.forEach(p => {
+    if (p.period && (!p.checks || !p.checks['1a'])) {
+      if (!p.checks) p.checks = {};
+      p.checks['1a'] = 'done';
+      if (!p.itemData) p.itemData = {};
+      
+      const parts = p.period.split(' ');
+      if (parts.length > 0) {
+        const monthsPart = parts[0];
+        const monthRangeParts = monthsPart.split(/[–-]/);
+        p.itemData['1a_from'] = monthRangeParts[0];
+        p.itemData['1a_to'] = monthRangeParts[1] || monthRangeParts[0];
+      }
+      migrated = true;
+    }
+  });
+  if (migrated) {
+    saveLocal();
+  }
+  
   renderAll();
 }
 
@@ -1305,21 +1327,39 @@ function renderStageContent(p, sid){
       const isSelected=cv===v;
       return `<button class="ck-pill ${isSelected?'sel-'+v:''}" onclick="setCheck('${i.id}','${c.toLowerCase()}',this,event)">${c}</button>`;
     }).join('');
-    let inputs='<div class="ck-input-col">';
+    const hasPills = i.choices.length > 0;
+    let inputs = hasPills ? '<div class="ck-input-col">' : '<div class="ck-input-col" style="width: auto;">';
     if(i.inputs){
       if(i.inputs.date){ const d=(p.itemData&&p.itemData[i.id+'_date'])||''; inputs+=`<input type="date" class="ck-input w-sm" value="${d}" onchange="saveItemData('${i.id}','date',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.amount){ const a=(p.itemData&&p.itemData[i.id+'_amount'])||''; inputs+=`<input type="number" class="ck-input w-sm mono" placeholder="₹" value="${a}" onchange="saveItemData('${i.id}','amount',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.arn){ const a=(p.itemData&&p.itemData[i.id+'_arn'])||''; inputs+=`<input type="text" class="ck-input w-md mono" placeholder="ARN..." value="${a}" onchange="saveItemData('${i.id}','arn',this.value)" onclick="event.stopPropagation()">`; }
       if(i.inputs.text){ const t=(p.itemData&&p.itemData[i.id+'_text'])||''; inputs+=`<input type="text" class="ck-input w-sm" placeholder="${i.inputs.text}" value="${t}" onchange="saveItemData('${i.id}','text',this.value)" onclick="event.stopPropagation()">`; }
+      if(i.inputs.monthRange){
+        const fromVal=(p.itemData&&p.itemData[i.id+'_from'])||'';
+        const toVal=(p.itemData&&p.itemData[i.id+'_to'])||'';
+        const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+        let fromOptions = '<option value="">— From —</option>' + months.map(m => `<option value="${m}" ${fromVal===m?'selected':''}>${m}</option>`).join('');
+        let toOptions = '<option value="">— To —</option>' + months.map(m => `<option value="${m}" ${toVal===m?'selected':''}>${m}</option>`).join('');
+        inputs += `<div style="display:flex;gap:6px;align-items:center;">
+          <select class="ck-input" style="padding:4px 8px;font-size:12px;border-radius:4px;width:90px;" onchange="saveItemData('${i.id}','from',this.value)" onclick="event.stopPropagation()">${fromOptions}</select>
+          <span style="color:var(--muted);font-size:11px;user-select:none;">to</span>
+          <select class="ck-input" style="padding:4px 8px;font-size:12px;border-radius:4px;width:90px;" onchange="saveItemData('${i.id}','to',this.value)" onclick="event.stopPropagation()">${toOptions}</select>
+        </div>`;
+      }
     }
     inputs+='</div>';
+    
+    const rightContent = hasPills 
+      ? `${inputs}<div class="ck-pills">${pills}</div>` 
+      : `<div style="grid-column: 1 / span 2; display: flex; justify-content: flex-end; width: 100%;">${inputs}</div>`;
+
     return `<div class="ck-row ${isDone?'ck-done':''}">
       <div class="ck-row-inner">
         <div class="ck-left">
           <div class="ck-num">${String(idx+1).padStart(2,'0')}</div>
           <div class="ck-text ${isDone?'done':''}">${i.text}</div>
         </div>
-        <div class="ck-right">${inputs}<div class="ck-pills">${pills}</div></div>
+        <div class="ck-right">${rightContent}</div>
       </div>
     </div>`;
   }).join('');
@@ -1569,8 +1609,33 @@ function saveItemData(itemId, field, val){
   const p=DB.projects.find(x=>x.id===currentProjId); if(!p) return;
   if(!p.itemData) p.itemData={};
   p.itemData[itemId+'_'+field]=val;
+  
+  if(itemId==='1a'){
+    if(!p.checks) p.checks={};
+    if(p.itemData['1a_from'] && p.itemData['1a_to']){
+      p.checks['1a']='done';
+    } else {
+      p.checks['1a']='';
+    }
+  }
+  
   p.updated=new Date().toISOString().split('T')[0];
   save();
+  
+  if(itemId==='1a'){
+    renderStageContent(p, activeStageId);
+    const stage=STAGES.find(s=>s.id===1);
+    if(stage){
+      const sp=getStageProgress(p,stage);
+      const sniEl = document.getElementById('sni_1');
+      if (sniEl) {
+        sniEl.classList.toggle('done', sp.done===stage.items.length);
+      }
+    }
+    renderStats();
+    renderProjects();
+  }
+  
   syncProject(p);
 }
 
@@ -1708,7 +1773,7 @@ function saveAddProject(){
   const newProj = {id:'p'+Date.now(),clientId,period,
     assigned:document.getElementById('ap-assigned').value,
     priority:document.getElementById('ap-priority').value,
-    status:'new',notes:'',checks:{},itemData:{},sdpData:{},rfd:{},
+    status:'new',notes:'',checks:{'1a':'done'},itemData:{'1a_from':fromMonth,'1a_to':toMonth},sdpData:{},rfd:{},
     updated:new Date().toISOString().split('T')[0]};
   DB.projects.unshift(newProj);
   save(); closeAddProject();
